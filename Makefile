@@ -1,12 +1,12 @@
 HDRS:=$(wildcard src/*.hh)
 CTRS:=$(wildcard src/*.cc)
-LIBS:=-lz
+LIBS:=
 
 main: hl_trans.o
 	@echo "Try it with 'make test'"
 
 test: _data/iceland-latest.osm-d.gr.gz hl_trans.o
-	@echo "This test takes less than a minute on my laptop."
+	@echo "\nThis test takes less than a minute on my laptop...\n"
 	gunzip -c $< | awk '{print($$2,$$3,$$4);}' | ./hl_trans.o test -
 
 %.o: src/%.cc $(HDRS)
