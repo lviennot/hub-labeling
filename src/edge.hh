@@ -16,7 +16,7 @@ namespace edge { // Various edge information.
     template<typename V> // vertex number type
     struct src_dst : public dst_only<V> {
         V src;
-        src_dst(V u, V v) : src(u), dst_only<V>::dst_only(v) {}
+        src_dst(V u, V v) : dst_only<V>::dst_only(v), src(u) {}
         src_dst() {}
     };
 
