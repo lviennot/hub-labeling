@@ -1,5 +1,6 @@
 HDRS:=$(wildcard src/*.hh)
 CTRS:=$(wildcard src/*.cc)
+UNTS:=$(wildcard src/*_unit.cc)
 LIBS:=
 
 main: hl_trans.o
@@ -8,6 +9,10 @@ main: hl_trans.o
 test: _data/iceland-latest.osm-d.gr.gz hl_trans.o
 	@echo "\nThis test takes less than a minute on my laptop...\n"
 	gunzip -c $< | awk '{print($$2,$$3,$$4);}' | ./hl_trans.o test -
+
+unit: src/unit.cc $(HDRS) $(UNTS)
+	g++ -std=c++11 -g -rdynamic -pthread $(LIBS) -o $@ $(UNTS) $< 
+	./unit
 
 %.o: src/%.cc $(HDRS)
 	g++ -std=c++11 -O3 -pthread $(LIBS) -o $@ $<
