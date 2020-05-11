@@ -195,7 +195,7 @@ public:
 
     V hub_ID(int i) { return ranked_hubs[i]; }
 
-    inline WL distance(int u, int v) {
+    inline const WL distance(int u, int v) {
         const label_t &lab_u = index_[u];
         const label_t &lab_v = index_[v];
 
