@@ -179,7 +179,7 @@ public:
     int dfs_count(G &tree, std::vector<V> &vtx, int i) {
         int count = 0;
         if (vtx[i] != G::not_vertex) {
-            V v = vtx[i];
+            //V v = vtx[i];
             count = 1;
             for (int j : tree[i]) {
                 if (j > i) // a son, not parent

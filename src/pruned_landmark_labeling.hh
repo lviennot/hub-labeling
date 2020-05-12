@@ -51,12 +51,13 @@ private:
         return ptr;
     }
     
-    int n_; // number of nodes
+    V n_; // number of nodes
     std::vector<V> ranked_hubs;
     std::vector<label_t> index_;
 
-    int i_hub; // next hub number
-    int64_t sum_nvis, last_nvis, last_r; // stats for progress
+    V i_hub; // next hub number
+    int64_t sum_nvis;
+    V last_nvis, last_r; // stats for progress
 
 
 public:
@@ -73,11 +74,11 @@ public:
         // create labels for all pairs u,v with u in sel_from, v in sel_to
         if (sel_from.size() == 0) { // put all nodes
             sel_from.reserve(n_);
-            for (int v = 0; v < n_; ++v) sel_from.push_back(v);
+            for (V v = 0; v < n_; ++v) sel_from.push_back(v);
         }
         if (sel_to.size() == 0) { // put all nodes
             sel_to.reserve(n_);
-            for (int v = 0; v < n_; ++v) sel_to.push_back(v);
+            for (V v = 0; v < n_; ++v) sel_to.push_back(v);
         }
         // random perms:
         for (V i = sel_from.size() - 1; i > 0; --i) {
@@ -91,13 +92,13 @@ public:
         for (V v : sel_from) { is_sel_from[v] = true; }
         for (V v : sel_to) { is_sel_to[v] = true; }
         // Complete:
-        int n_from = sel_from.size(), n_to = sel_to.size();
+        V n_from = sel_from.size(), n_to = sel_to.size();
         sel_from.reserve(n_);
-        for (int v = 0; v < n_; ++v) {
+        for (V v = 0; v < n_; ++v) {
             if (! is_sel_from[v]) sel_from.push_back(v);
         }
         sel_to.reserve(n_);
-        for (int v = 0; v < n_; ++v) {
+        for (V v = 0; v < n_; ++v) {
             if (! is_sel_to[v]) sel_to.push_back(v);
         }
         // random perm:
@@ -140,7 +141,7 @@ public:
                     ++i_from;
                 if (i_from < sel_from.size()) {
                     forward(g, sel_from[i_from++], trav, weighted, false);
-                    for (int i = trav.nvis() - 1 ; i > 0 ; --i) {
+                    for (V i = trav.nvis() - 1 ; i > 0 ; --i) {
                         assert ( ! is_hub[trav.visit(i)] );
                     }
                     tsampl.add_tree(trav, &is_sel_to);
@@ -149,7 +150,7 @@ public:
                     ++i_to;
                 if (i_to < sel_to.size()) {
                     backward(g_rev, sel_to[i_to++], trav, weighted, false);
-                    for (int i = trav.nvis() - 1 ; i > 0 ; --i) {
+                    for (V i = trav.nvis() - 1 ; i > 0 ; --i) {
                         assert ( ! is_hub[trav.visit(i)] );
                     }
                     tsampl.add_tree(trav, &is_sel_from);
@@ -193,9 +194,9 @@ public:
         print_stats(std::cerr, is_sel_from, is_sel_to);
     }
 
-    V hub_ID(int i) { return ranked_hubs[i]; }
+    V hub_ID(V i) { return ranked_hubs[i]; }
 
-    inline WL distance(int u, int v) const {
+    inline WL distance(V u, V v) const {
         const label_t &lab_u = index_[u];
         const label_t &lab_v = index_[v];
 
@@ -204,7 +205,7 @@ public:
         //__mm_prefetch(&(lab_u.out_v[0], _MM_HINT_T0));
         //__mm_prefetch(&(lab_v.in_v[0], _MM_HINT_T0));
 
-        for (int iu = 0, iv = 0 ; ; ) {
+        for (V iu = 0, iv = 0 ; ; ) {
             V xu = lab_u.out_v[iu], xv = lab_v.in_v[iv];
             if (xu == xv) { // common hub
                 if (xu == n_) break; // sentinel
@@ -221,7 +222,7 @@ public:
         return d;
     }
 
-    inline std::pair<int,int> common_hub(int u, int v) {
+    inline std::pair<int,int> common_hub(V u, V v) {
         const label_t &lab_u = index_[u];
         const label_t &lab_v = index_[v];
 
@@ -230,9 +231,9 @@ public:
         //__mm_prefetch(&(lab_u.out_v[0], _MM_HINT_T0));
         //__mm_prefetch(&(lab_v.in_v[0], _MM_HINT_T0));
 
-        int iu_opt = -1, iv_opt = -1;
+        int iu_opt = G::not_vertex, iv_opt = G::not_vertex;
         
-        for (int iu = 0, iv = 0 ; ; ) {
+        for (V iu = 0, iv = 0 ; ; ) {
             V xu = lab_u.out_v[iu], xv = lab_v.in_v[iv];
             if (xu == xv) { // common hub
                 if (xu == n_) { break; } // sentinel
@@ -246,7 +247,7 @@ public:
             }
         }
 
-        return std::pair<int,int>(iu_opt, iv_opt);
+        return std::pair<V,V>(iu_opt, iv_opt);
     }
 
     std::vector<edgeL> out_hub_edges(const std::vector<bool> &is_sel_from = {},
@@ -254,16 +255,16 @@ public:
         std::vector<edgeL> edg;
         int64_t fwd = 0;
         bool fwd_sel = is_sel_from.size() == 0;
-        for (int u = 0; u < n_; ++u) {
+        for (V u = 0; u < n_; ++u) {
             if (fwd_sel || is_sel_from[u]) {
                 fwd += index_[u].out_v.size();
             }
         }
         edg.reserve(fwd);
-        for (int u = 0; u < n_; ++u) {
+        for (V u = 0; u < n_; ++u) {
             if (fwd_sel || is_sel_from[u]) {
                 const label_t &lab_u = index_[u];
-                for (int i = 0; i < lab_u.out_v.size(); ++i) {
+                for (V i = 0; i < lab_u.out_v.size(); ++i) {
                     if (lab_u.out_v[i] == n_) break; // sentinel
                     V x = ranked_hubs[lab_u.out_v[i]];
                     hubinfo hi(x, lab_u.out_d[i], lab_u.out_nh[i]);
@@ -279,16 +280,16 @@ public:
         std::vector<edgeL> edg;
         int64_t bwd = 0;
         bool bwd_sel = is_sel_to.size() == 0;
-        for (int u = 0; u < n_; ++u) {
+        for (V u = 0; u < n_; ++u) {
             if (bwd_sel || is_sel_to[u]) {
                 bwd += index_[u].in_v.size();
             }
         }
         edg.reserve(bwd);
-        for (int u = 0; u < n_; ++u) {
+        for (V u = 0; u < n_; ++u) {
             if (bwd_sel || is_sel_to[u]) {
                 const label_t &lab_u = index_[u];
-                for (int i = 0; i < lab_u.in_v.size(); ++i) {
+                for (V i = 0; i < lab_u.in_v.size(); ++i) {
                     if (lab_u.in_v[i] == n_) break; // sentinel
                     V x = ranked_hubs[lab_u.in_v[i]];
                     hubinfo hi(x, lab_u.in_d[i], lab_u.in_nh[i]);
@@ -302,10 +303,11 @@ public:
     void print_stats(std::ostream &cout,
                      const std::vector<bool> &is_sel_from = {},
                      const std::vector<bool> &is_sel_to = {}) {
-        int64_t fwd = 0, bwd = 0, fmax = 0, bmax = 0;
-        int n_fwd = 0, n_bwd = 0;
+        int64_t fwd = 0, bwd = 0;
+        V fmax = 0, bmax = 0;
+        V n_fwd = 0, n_bwd = 0;
         bool fwd_sel = is_sel_from.size() == 0, bwd_sel = is_sel_to.size() == 0;
-        for (int u = 0; u < n_; ++u) {
+        for (V u = 0; u < n_; ++u) {
             if (fwd_sel || is_sel_from[u]) {
                 if (index_[u].out_v.size() > fmax)
                     fmax = index_[u].out_v.size();
@@ -313,7 +315,7 @@ public:
                 ++n_fwd;
             }
         }
-        for (int u = 0; u < n_; ++u) {
+        for (V u = 0; u < n_; ++u) {
             if (bwd_sel || is_sel_to[u]) {
                 if (index_[u].in_v.size() > bmax)
                     bmax = index_[u].in_v.size();
@@ -347,13 +349,13 @@ public:
         for (V u : sel_from) {
             int lab_len = pll.index_[u].out_v.size(), new_len = 1;
             for (V v : sel_to) {
-                std::pair<int,int> h = pll.common_hub(u,v);
+                std::pair<V,V> h = pll.common_hub(u,v);
                 if (h.first >= 0) { keep[h.first] = true; ++new_len; }
             }
             label_t &lab_u = index_[u], &lab_pll = pll.index_[u];
             lab_u.out_v.reserve(new_len);
             lab_u.out_d.reserve(new_len);
-            for (int iu = 0; iu < lab_len; ++iu) {
+            for (V iu = 0; iu < lab_len; ++iu) {
                 if (keep[iu]) {
                     keep[iu] = false;
                     lab_u.out_v.push_back(lab_pll.out_v[iu]);
@@ -367,13 +369,13 @@ public:
         for (V u : sel_to) {
             int lab_len = pll.index_[u].in_v.size(), new_len = 1;
             for (V v : sel_from) {
-                std::pair<int,int> h = pll.common_hub(v, u);
+                std::pair<V,V> h = pll.common_hub(v, u);
                 if (h.second >= 0) { keep[h.second] = true; ++new_len; }
             }
             label_t &lab_u = index_[u], &lab_pll = pll.index_[u];
             lab_u.in_v.reserve(new_len);
             lab_u.in_d.reserve(new_len);
-            for (int iu = 0; iu < lab_len; ++iu) {
+            for (V iu = 0; iu < lab_len; ++iu) {
                 if (keep[iu]) {
                     keep[iu] = false;
                     lab_u.in_v.push_back(lab_pll.in_v[iu]);
@@ -391,9 +393,9 @@ public:
         std::vector<bool> keep(n_, false);
 
         for (V u : sel_from) {
-            int lab_len = index_[u].out_v.size(), new_len = 1;
+            V lab_len = index_[u].out_v.size(), new_len = 1;
             for (V v : sel_to) {
-                std::pair<int,int> h = common_hub(u,v);
+                std::pair<V,V> h = common_hub(u,v);
                 if (h.first >= 0) { keep[h.first] = true; ++new_len; }
             }
             label_t &lab_u = index_[u];
@@ -413,15 +415,15 @@ public:
         }
         
         for (V u : sel_to) {
-            int lab_len = index_[u].in_v.size(), new_len = 1;
+            V lab_len = index_[u].in_v.size(), new_len = 1;
             for (V v : sel_from) {
-                std::pair<int,int> h = common_hub(v, u);
+                std::pair<V,V> h = common_hub(v, u);
                 if (h.second >= 0) { keep[h.second] = true; ++new_len; }
             }
             label_t &lab_u = index_[u];
             std::vector<V> in_v; in_v.reserve(new_len);
             std::vector<WL> in_d; in_d.reserve(new_len);
-            for (int iu = 0; iu < lab_len; ++iu) {
+            for (V iu = 0; iu < lab_len; ++iu) {
                 if (keep[iu]) {
                     keep[iu] = false;
                     in_v.push_back(lab_u.in_v[iu]);
@@ -436,7 +438,7 @@ public:
     }    
 
 
-    void init_index(int n) {
+    void init_index(V n) {
         // Number of vertices
         n_ = n;
         i_hub = 0;
@@ -444,7 +446,7 @@ public:
 
         // Allocate index
         index_ = std::vector<label_t>(n_);
-        for (int u = 0; u < n_; ++u) {
+        for (V u = 0; u < n_; ++u) {
             label_t &lab_u = index_[u];
             lab_u.in_v.push_back(n_);
             lab_u.in_nh.push_back(n_);
@@ -467,8 +469,8 @@ public:
         else trav.bfs(g, u, filter);
         if (add_hub) {
             sum_nvis += trav.nvis(); last_nvis += trav.nvis();
-            for (int i = trav.nvis() - 1; i != -1; --i) {
-                int v = trav.visit(i);
+            for (V i = trav.nvis() - 1; i != (V)(-1); --i) {
+                V v = trav.visit(i);
                 label_t &lab_v = index_[v];
                 lab_v.in_v.back() = i_hub;
                 lab_v.in_nh.back() = trav.parent(v);
@@ -476,6 +478,7 @@ public:
                 lab_v.in_v.push_back(n_);
                 lab_v.in_nh.push_back(n_);
                 lab_v.in_d.push_back(max_weight);
+                if (i == 0) break;
             }
         }
     }
@@ -490,8 +493,8 @@ public:
         else trav.bfs(g_rev, u, filter);
         if (add_hub) {
             sum_nvis += trav.nvis(); last_nvis += trav.nvis();
-            for (int i = trav.nvis() - 1; i != -1; --i) {
-                int v = trav.visit(i);
+            for (V i = trav.nvis() - 1; i != (V)(-1); --i) {
+                V v = trav.visit(i);
                 label_t &lab_v = index_[v];
                 lab_v.out_v.back() = i_hub;
                 lab_v.out_nh.back() = trav.parent(v);
@@ -499,11 +502,12 @@ public:
                 lab_v.out_v.push_back(n_);
                 lab_v.out_nh.push_back(n_);
                 lab_v.out_d.push_back(max_weight);
+                if (i == 0) break;
             }
         }
     }
 
-    void progress(int r, bool force = false) {
+    void progress(V r, bool force = false) {
         if ((force && r > last_r)
             || r <= 10 || (r <= 100 && r % 10 == 0) || r % 100 == 0) {
             std::cerr << r  << " avg_nvis="<< (sum_nvis / (2*(r+1)))

@@ -79,7 +79,7 @@ public:
         init_from_edges(0, edg);
     }
 
-    V degree(V u) const { return (int) sdeg[u+1] - sdeg[u]; }
+    V degree(V u) const { return (V) sdeg[u+1] - sdeg[u]; }
 
     V max_degree() const {
         if (n_ <= 0) return 0;
@@ -186,7 +186,6 @@ public:
     std::vector<edge> edges_vector() const {
         std::vector<edge> edg;
         edg.reserve(m());
-        size_t i = 0;
         for (V u = 0; u < n_; ++u) {
             for (size_t e = sdeg[u]; e < sdeg[u+1]; ++e) {
                 edg.emplace_back(u, adj[e].dst, adj[e].wgt);
@@ -207,7 +206,6 @@ public:
 
     bool is_ID_sorted() { // asymptotically slower than reverse() twice
         for (V u = 0; u < n_; ++u) {
-            size_t e = sdeg[u], f = sdeg[u+1];
             for (size_t e = sdeg[u] + 1; e < sdeg[u+1]; ++e) {
                 if (adj[e-1].dst > adj[e].dst) return false;
             }

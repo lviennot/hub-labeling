@@ -9,9 +9,10 @@
 #include "pruned_landmark_labeling.hh"
 #include "logging.hh"
 
-typedef mgraph<int, int64_t> graph;
+typedef unsigned int uint;
+typedef mgraph<uint, int64_t> graph;
 typedef pruned_landmark_labeling<graph> pl_lab;
-typedef mgraph<int, pl_lab::hubinfo> graphL;
+typedef mgraph<uint, pl_lab::hubinfo> graphL;
 
 void usage_exit (char **argv) {
     auto paragraph = [](std::string s, int width=80) -> std::string {
@@ -105,26 +106,26 @@ int main (int argc, char **argv) {
     t = main_log.lap();
     
     // ------------------------- load subset -----------------------
-    std::vector<int> sel;
+    std::vector<uint> sel;
     if (argc > 3) {
         FILE *in = (std::string("-") != argv[3]) ? fopen(argv[3], "r") : stdin;
         char u[1024];
         for ( ; fscanf(in, " %s \n", u) >= 1 ; ) {
             if (vi[u] != 0) {
-                int v = vi[u] - 1;
+                uint v = vi[u] - 1;
                 sel.push_back(v);
             } else {
                 std::cerr <<"  stop "<< u <<" not in the graph\n";
             }
         }
     } else {
-        for (int u = 0; u < n; ++u) {
+        for (uint u = 0; u < n; ++u) {
             sel.push_back(u);
         }
     } 
     std::vector<bool> is_sel(n, false);
-    for (int v : sel) { is_sel[v] = true; }
-    int n_sel = sel.size();
+    for (uint v : sel) { is_sel[v] = true; }
+    uint n_sel = sel.size();
     main_log.cerr(t) << "loaded subset of "<< n_sel <<" nodes\n";
     t = main_log.lap();
     
@@ -145,28 +146,28 @@ int main (int argc, char **argv) {
         assert(g_in.is_ID_sorted());
         g = g.reverse().reverse(); // sort neighbors by ID
         traversal<graph> trav(g.n());
-        std::vector<int> src = {};
-        for (int i = 0; i < 100; ++i) src.push_back(rand() % g.n());
-        for (int s : src) {
+        std::vector<uint> src = {};
+        for (uint i = 0; i < 100; ++i) src.push_back(rand() % g.n());
+        for (uint s : src) {
             trav.clear();
             trav.dijkstra(g, s);
             for (int u : g) {
                 assert(trav.dist(u) == hl.distance(s, u));
                 if (trav.dist(u) == INT64_MAX) continue;
-                std::pair<int, int> hub = hl.common_hub(s, u);
+                std::pair<uint, uint> hub = hl.common_hub(s, u);
                 graphL::edge_head sx = g_out.neighbor(s, hub.first);
                 graphL::edge_head xu = g_in.neighbor(u, hub.second);
                 assert(sx.dst == xu.dst); // hub x
-                int x = hl.hub_ID(sx.dst);
+                uint x = hl.hub_ID(sx.dst);
                 assert(trav.dist(u) == sx.wgt.dist + xu.wgt.dist);
                 int64_t len = 0L;
-                for (int s2 = s; s2 != x; ) {
+                for (uint s2 = s; s2 != x; ) {
                     pl_lab::hubinfo hi = g_out.edge_weight(s2, sx.dst);
                     len += g.edge_weight(s2, hi.next_hop);
                     s2 = hi.next_hop;
                 }
                 assert(len == sx.wgt.dist);
-                for (int u2 = u; u2 != x; ) {
+                for (uint u2 = u; u2 != x; ) {
                     pl_lab::hubinfo hi = g_in.edge_weight(u2, xu.dst);
                     len += g.edge_weight(hi.next_hop, u2);
                     u2 = hi.next_hop;
@@ -206,8 +207,8 @@ int main (int argc, char **argv) {
         graphL g_out(edg_out), g_in(edg_in);
         main_log.cerr() << "hub graphs\n";
         // selection
-        std::vector<int> sel(n_sel), sel_inv(n);
-        for (int i = 0, u = 0; u < n; ++u) {
+        std::vector<uint> sel(n_sel), sel_inv(n);
+        for (uint i = 0, u = 0; u < n; ++u) {
             if (is_sel[u]) {
                 sel[i] = u;
                 sel_inv[u] = i;
@@ -219,15 +220,15 @@ int main (int argc, char **argv) {
         main_log.cerr() << "selection\n";
         // trans arcs
         std::vector<graph::edge> edg;
-        int u = 0;
+        uint u = 0;
         for ( ; u < n; ++u) {
             if (is_sel[u]) {
-                int i = sel_inv[u];
+                uint i = sel_inv[u];
                 for (auto e : g_out[u]) {
                     if (e.wgt.dist < INT64_MAX) {
                         for (auto f : g_in[e.dst]) {
                             if (f.wgt.dist < INT64_MAX) {
-                                int j = sel_inv[f.dst];
+                                uint j = sel_inv[f.dst];
                                 int64_t d_ij = e.wgt.dist + f.wgt.dist;
                                 edg.push_back(graph::edge(i, j, d_ij));
                             }
@@ -247,9 +248,9 @@ int main (int argc, char **argv) {
             // adj matrix is smaller
             main_log.cerr() << "adj matrix\n";
             std::vector<std::vector<int64_t> > mat(n_sel);
-            for (int i = 0; i < n_sel; ++i) {
+            for (uint i = 0; i < n_sel; ++i) {
                 mat[i].reserve(n_sel);
-                for (int j = 0; j < n_sel; ++j) {
+                for (uint j = 0; j < n_sel; ++j) {
                     mat[i].push_back(INT64_MAX);
                 }
             }
@@ -261,12 +262,12 @@ int main (int argc, char **argv) {
             // end closure
             for ( ; u < n; ++u) {
                 if (is_sel[u]) {
-                    int i = sel_inv[u];
+                    uint i = sel_inv[u];
                     for (auto e : g_out[u]) {
                         if (e.wgt.dist < INT64_MAX) {
                             for (auto f : g_in[e.dst]) {
                                 if (f.wgt.dist < INT64_MAX) {
-                                    int j = sel_inv[f.dst];
+                                    uint j = sel_inv[f.dst];
                                     int64_t d_ij = e.wgt.dist + f.wgt.dist;
                                     if (d_ij < mat[i][j]) mat[i][j] = d_ij; 
                                 }
@@ -276,8 +277,8 @@ int main (int argc, char **argv) {
                 }
             }
             main_log.cerr() << "closure\n";
-            for (int i = 0; i < n_sel; ++i) {
-                for (int j = 0; j < n_sel; ++j) {
+            for (uint i = 0; i < n_sel; ++i) {
+                for (uint j = 0; j < n_sel; ++j) {
                     std::cout <<"c "<< lab[sel[i]] <<" "<< lab[sel[j]]
                               <<" "<< mat[i][j] <<"\n";
                 }

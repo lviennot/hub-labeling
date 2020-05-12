@@ -9,8 +9,8 @@
 /** Priority queue for ints in 0..n-1 through a heap. 
  *  Smallest element according to [cmp_less] is popped first. */
 
-
 static const int not_pos = -1;
+
 
 class heap {
 private:
@@ -18,17 +18,20 @@ private:
     std::vector<int> elts, pos;
     
 public:
+    //-std=c++17: inline static const int not_pos = -1; 
+    
     heap(std::function<bool(const int &, const int &)> cmp, int n = 0)
-        : cmp_less(cmp), elts(), pos(n, not_pos) {
+        : cmp_less(cmp) {
        elts.reserve(n);
+       pos.assign(n, not_pos);
    }
 
     inline bool empty() { return elts.size() == 0; }
-    inline int size() { return elts.size(); }
+    inline size_t size() { return elts.size(); }
     inline int top() { assert(elts.size() > 0); return elts[0]; }
     void clear() {
         elts.clear();
-        for (int e = 0; e < pos.size(); ++e) pos[e] = not_pos;
+        for (size_t e = 0; e < pos.size(); ++e) pos[e] = not_pos;
     }
     void set_compare(std::function<bool(const int &, const int &)> cmp) {
         cmp_less = cmp;
@@ -78,26 +81,27 @@ public:
     }
 
 private:
-    bool move_up(int i) {
-        assert(i >= 0 && i < elts.size());
-        int p = (i+1)/2 - 1; // parent
-        int ui, up;
+    bool move_up(size_t i) {
+        if (i == 0) return false;
+        assert(i > 0 && i < elts.size());
+        size_t p = (i+1)/2 - 1; // parent
         bool goes_up = false;
-        while (p >= 0 && cmp_less(elts[i], elts[p])) {
+        while (cmp_less(elts[i], elts[p])) {
             goes_up = true;
             std::swap(elts[i], elts[p]);
             std::swap(pos[elts[i]], pos[elts[p]]);
+            if (p == 0) break;
             i = p;
             p = (i+1)/2 - 1;
         }
         return goes_up;
     }
 
-    void move_down(int i) {
-        int size = elts.size();
+    void move_down(size_t i) {
+        size_t size = elts.size();
         assert(i >= 0 && i < size);
         while (true) {
-            int c1 = 2*i + 1, c2 = 2*i + 2; // children
+            size_t c1 = 2*i + 1, c2 = 2*i + 2; // children
             if (c1 >= size) { break; }
             int cmin = c1;
             if (c2 < size) assert(pos[elts[c2]] >= 0);

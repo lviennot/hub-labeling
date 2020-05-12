@@ -36,39 +36,43 @@ public:
     typedef typename G::vertex V;
     typedef typename G::weight W;
     typedef WL long_weight;
+    typedef V V2; // indexes with respect to order of visit
 private:
     
     std::vector<V> q_vec_, scc_stack_;
     std::vector<V> visit_;
     std::vector<bool> visited_, in_scc_stack_;
-    std::vector<int> visited_at_;
-    std::vector<int> lowlink_, visit_end_; // for DFS
+    std::vector<V2> visited_at_;
+    std::vector<V2> lowlink_, visit_end_; // for DFS
     std::vector<V> parent_; 
     std::vector<WL> dist_, tree_ecc_; // for Dijkstra and BFS
     heap queue_;
     std::vector<int> size_; // for tree centroid, and component sizes
     
-    int n_, nvis_;
+    V2 n_, nvis_;
     
 public:
 
     const V not_vertex = G::not_vertex;
 
     // Handle graphs with vertices in [0..n-1].
-    traversal (int n)
-        : dist_(n, max_weight),
-          queue_([this](V u, V v){ return dist_[u] < dist_[v]; }, n), 
-          visit_(n), visited_(n, false), visited_at_(n, n),
-          size_(n, 0), parent_(n, n), n_(n), nvis_(0),
-          in_scc_stack_(n, false), lowlink_(n, n), visit_end_(n, n),
-          tree_ecc_(n, zero_weight)
+    traversal (V2 n)
+        : visit_(n), visited_(n, false),
+          in_scc_stack_(n, false), visited_at_(n, n),
+          lowlink_(n, n), visit_end_(n, n),
+          parent_(n, n),
+          dist_(n, max_weight),
+          tree_ecc_(n, zero_weight),
+          queue_([this](V u, V v){ return dist_[u] < dist_[v]; }, n),
+          size_(n, 0),
+          n_(n), nvis_(0)
     {
         q_vec_.reserve(n_);
     }
 
     int n() const { return n_; }
     int nvis() const { return nvis_; }
-    V visit(int i) const { assert(i < nvis_); return visit_[i]; }
+    V visit(V2 i) const { assert(i < nvis_); return visit_[i]; }
     bool visited(V u) { return visited_[u]; }
     int visited_at(V u) { return visited_at_[u]; }
     V parent(V u) const { return parent_[u]; }
@@ -76,7 +80,7 @@ public:
     const std::vector<WL>& distances() const { return dist_; }
     int size(V u) const { return size_[u]; }
     WL tree_ecc(V u) const { return tree_ecc_[u]; }
-    V first_visited (int i_start = 0) const { return visit_[i_start]; }
+    V first_visited (V2 i_start = 0) const { return visit_[i_start]; }
     V last_visited () const { return visit_[nvis_ - 1]; }
 
     typedef typename G::edge edge;
@@ -152,9 +156,9 @@ public:
     }
 
 
-    void clear(WL dft_wgt = max_weight, int n = 0) {
-        int up_to = std::max(n, nvis_);
-        for (int i = 0; i < nvis_; ++i)  {
+    void clear(WL dft_wgt = max_weight, V2 n = 0) {
+        V2 up_to = std::max(n, nvis_);
+        for (V2 i = 0; i < up_to; ++i)  {
             V u = visit_[i];
             visit_[i] = not_vertex;
             visited_[u] = false;
@@ -179,10 +183,10 @@ public:
                = [](V v, WL d, V p, WL dp) { return true; },
             std::vector<V> more_sources = {}, WL step_weight = 1) {
         assert(g.n() <= n_);
-        int nvis0 = nvis_;
-        int head = 0, tail = 0;
+        V2 nvis0 = nvis_;
+        V2 head = 0, tail = 0;
         more_sources.push_back(s);
-        for (int s : more_sources) {
+        for (V s : more_sources) {
             dist_[s] = zero_weight;
             parent_[s] = s;
             q_vec_[tail++] = s;
@@ -192,7 +196,7 @@ public:
             V u = q_vec_[head++];
             WL du = dist_[u];
             if ( ! visited_[u]) {
-                int i_vis = nvis_++;
+                V2 i_vis = nvis_++;
                 visit_[i_vis] = u;
                 visited_[u] = true;
                 visited_at_[u] = i_vis;
@@ -212,7 +216,7 @@ public:
     static bool filter_all(V v, WL d, V p, WL dp) { return true; }
     
     // returns number of visited nodes
-    int dijkstra (const G &g, V s,
+    V2 dijkstra (const G &g, V s,
                   std::function<bool(V, WL, V, WL)> filtr
                   = [](V v, WL d, V p, WL dp) { return true; },
                   std::vector<V> more_sources = {},
@@ -222,9 +226,9 @@ public:
         assert(g.n() <= n_);
         queue_.clear();
         queue_.set_compare([this](V u, V v){ return dist_[u] < dist_[v]; });
-        int nvis0 = nvis_;
+        V2 nvis0 = nvis_;
         more_sources.push_back(s);
-        for (int i = 0; i < more_sources.size(); ++i) {
+        for (V2 i = 0; i < more_sources.size(); ++i) {
             V s = more_sources[i];
             if (s != not_vertex) {
                 dist_[s] = i < more_sources_dist.size() ? more_sources_dist[i]
@@ -238,7 +242,7 @@ public:
             V u = queue_.pop();
             WL du = dist_[u];
             if (! visited_[u]) {
-                int i_vis = nvis_++;
+                V2 i_vis = nvis_++;
                 visit_[i_vis] = u;
                 visited_[u] = true;
                 visited_at_[u] = i_vis;
@@ -257,7 +261,7 @@ public:
     }
 
     // returns number of visited nodes
-    int dijkstra_weight (const G &g, V s, WL ds = zero_weight,
+    V2 dijkstra_weight (const G &g, V s, WL ds = zero_weight,
                   std::function<WL(WL,V,V,W)> add_arc_weight
                   = [](WL du, V u, V v, W w) { assert(false); },
                   std::function<bool(V, WL, V, WL)> filtr
@@ -267,9 +271,9 @@ public:
         assert(g.n() <= n_);
         queue_.clear();
         queue_.set_compare([this](V u, V v){ return dist_[u] < dist_[v]; });
-        int nvis0 = nvis_;
+        V2 nvis0 = nvis_;
         more_sources.push_back(s);
-        for (int i = 0; i < more_sources.size(); ++i) {
+        for (V2 i = 0; i < more_sources.size(); ++i) {
             V s = more_sources[i];
             if (s != not_vertex) {
                 dist_[s] = i < more_sources_dist.size() ? more_sources_dist[i]
@@ -283,7 +287,7 @@ public:
             V u = queue_.pop();
             WL du = dist_[u];
             if (! visited_[u]) {
-                int i_vis = nvis_++;
+                V2 i_vis = nvis_++;
                 visit_[i_vis] = u;
                 visited_[u] = true;
                 visited_at_[u] = i_vis;
@@ -302,7 +306,7 @@ public:
     }
 
     // returns number of visited nodes
-    int a_star (const G &g, V s, V t,
+    V2 a_star (const G &g, V s, V t,
                 std::function<WL(V)> dist_to_t_lb,
                 std::function<bool(V, WL, V, WL)> filtr
                 = [](V v, WL d, V p, WL dp) { return true; }) {
@@ -311,7 +315,7 @@ public:
         queue_.set_compare([this, dist_to_t_lb](V u, V v){
                 return dist_[u] + dist_to_t_lb(u) < dist_[v] + dist_to_t_lb(v);
             });
-        int nvis0 = nvis_;
+        V2 nvis0 = nvis_;
         dist_[s] = zero_weight;
         parent_[s] = s;
         queue_.push(s);
@@ -319,7 +323,7 @@ public:
         while ( ! queue_.empty()) {
             V u = queue_.pop();
             if (! visited_[u]) {
-                int i_vis = nvis_++;
+                V2 i_vis = nvis_++;
                 visit_[i_vis] = u;
                 visited_[u] = true;
                 visited_at_[u] = i_vis;
@@ -339,9 +343,9 @@ public:
         return nvis_ - nvis0;
     }
 
-    void clear_a_star(const G &g, WL dft_wgt = max_weight, int n = 0) {
-        int up_to = std::max(n, nvis_);
-        for (int i = 0; i < nvis_; ++i)  {
+    void clear_a_star(const G &g, WL dft_wgt = max_weight, V2 n = 0) {
+        V2 up_to = std::max(n, nvis_);
+        for (V2 i = 0; i < up_to; ++i)  {
             V u = visit_[i];
             visit_[i] = not_vertex;
             visited_[u] = false;
@@ -362,11 +366,11 @@ public:
 
 
     // returns number of visited nodes
-    int dfs (const G &g, V s, dfs_option opt=NONE) {
+    V2 dfs (const G &g, V s, dfs_option opt=NONE) {
         assert(g.n() <= n_);
-        int nvis0 = nvis_, vis_end = nvis_;
+        V2 nvis0 = nvis_, vis_end = nvis_;
         parent_[s] = s;
-        int tail = 0;
+        V2 tail = 0;
         q_vec_[tail++] = s;
 
         while (tail > 0) {
@@ -383,7 +387,7 @@ public:
              * avoid allocating one more array).
              */
             if ( ! visited_[u]) { // begin visit of [u]
-                int i_vis = nvis_++;
+                V2 i_vis = nvis_++;
                 visit_[i_vis] = u;
                 visited_[u] = true;
                 visited_at_[u] = i_vis;
@@ -417,7 +421,7 @@ public:
                 visit_end_[u] = vis_end++;
                 if (opt == SCC) {
                     V p = parent_[u];
-                    int lowlink_u = lowlink_[u];
+                    V2 lowlink_u = lowlink_[u];
                     lowlink_[p] = std::min(lowlink_[p], lowlink_u);
                     assert(0 <= lowlink_u && lowlink_u < nvis_);
                     if (visit_[lowlink_u] == u) {
@@ -440,15 +444,15 @@ public:
 
     // Compute strongly connected components of the input graph and returns
     // the number of components found.
-    int strongly_connected_components(const G &g) {
+    V2 strongly_connected_components(const G &g) {
         clear();
         for (V s = 0; s < g.n(); ++s) {
             if ( ! visited_[s]) {
                 dfs(g, s, SCC);
             }
         }
-        int nb = 0;
-        for (int i = 0; i < nvis_; ++i) {
+        V2 nb = 0;
+        for (V2 i = 0; i < nvis_; ++i) {
             V u = visit_[i];
             int ll = lowlink_[u];
             assert(0 <= ll && ll < nvis_);
@@ -462,19 +466,19 @@ public:
     // asserts that [strongly_connected_components(g)] has been called
     // and that [v <= g.n()].
     // The return number is in the range 0 .. g.n() - 1.
-    int scc_number(V v) {
+    V2 scc_number(V v) {
         assert(v < nvis_);
         return lowlink_[v];
     }
-    int scc_largest() {
+    V2 scc_largest() {
         assert(nvis_ > 0);
-        int m = 0;
-        for (int i = 1; i < nvis_; ++i) {
+        V2 m = 0;
+        for (V2 i = 1; i < nvis_; ++i) {
             if (size_[i] > size_[m]) m = i;
         }
         return m;
     }
-    int scc_size(int i) { return size_[i]; }
+    V2 scc_size(int i) { return size_[i]; }
     std::vector<int> scc_vector() {
         return lowlink_;
     }
@@ -486,15 +490,15 @@ public:
     
     // Returns a topological ordering [ord] of [g]
     // such that for all edge [uv] of [g], [u] appears before [v] in [ord].
-    std::vector<int> topological_ordering (G &g) {
+    std::vector<V2> topological_ordering (G &g) {
         clear();
         for (V u : g) {
             if ( ! visited_[u]) {
                 dfs(g, u, true);
             }
         }
-        int n = g.n();
-        std::vector<int> ord;
+        V2 n = g.n();
+        std::vector<V2> ord;
         ord.reserve(n);
         for (V u : g) ord[n - 1 - visit_end_[u]] = u;
         return ord;
@@ -505,14 +509,14 @@ public:
     /** The following functions assume that WL is an int type. */
     
     // returns number of visited nodes, assumes 
-    int max_card_search (const G &g, V s,
+    V2 max_card_search (const G &g, V s,
                  std::function<bool(V, V)> filtr
                  = [](V v, V p) { return true; }) {
         assert(g.n() <= n_);
         queue_.clear();
         // number of visited neighbors of u is stored in dist_[u]
         queue_.set_compare([this](V u, V v){ return dist_[u] > dist_[v]; });
-        int nvis0 = nvis_;
+        V2 nvis0 = nvis_;
         dist_[s] = 0;
         parent_[s] = s;
         queue_.push(s);
@@ -520,7 +524,7 @@ public:
         while ( ! queue_.empty()) {
             V u = queue_.pop();
             if (! visited_[u]) {
-                int i_vis = nvis_++;
+                V2 i_vis = nvis_++;
                 visit_[i_vis] = u;
                 visited_[u] = true;
                 visited_at_[u] = i_vis;
@@ -537,13 +541,13 @@ public:
 
 
     // Asserts that the graph is a tree (with symmetric links).
-    int tree_size(const G &g, int root,
+    V2 tree_size(const G &g, V root,
                   std::function<int(V)> node_size = [](V v) { return 1; }) {
         return tree_size(g, root, root);
     }
-    int tree_size(const G &g, int u, int par,
+    V2 tree_size(const G &g, V u, V par,
                   std::function<int(V)> node_size = [](V v) { return 1; }) {
-        int s = 1; // for u
+        V2 s = 1; // for u
         size_[u] = node_size(u);
         assert (size_[u] > 0);
         for (V v : g[u]) {
@@ -555,8 +559,8 @@ public:
         return s ;
     }
 
-    void tree_size_clear(const G &g, int r) { tree_size_clear(g, r, r); }
-    void tree_size_clear(const G &g, int u, int par) {
+    void tree_size_clear(const G &g, V r) { tree_size_clear(g, r, r); }
+    void tree_size_clear(const G &g, V u, V par) {
         if (size_[u] > 0) {
             size_[u] = 0;
             for (V v : g[u]) {
@@ -568,10 +572,10 @@ public:
     }
 
     // Asserts that tree_size(g, root) has been called.
-    V centroid(const G &g, int r, int n_threshold) {
+    V centroid(const G &g, V r, V2 n_threshold) {
         return centroid(g, r, r, n_threshold);
     }
-    V centroid(const G &g, int r, int par, int n_threshold) {
+    V centroid(const G &g, V r, V par, V2 n_threshold) {
         for (V v : g[r]) {
             if (v != par && v != r && size_[v] > n_threshold)
                 return centroid (g, v, r,  n_threshold);
