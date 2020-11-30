@@ -48,6 +48,9 @@ void usage_exit (char **argv) {
         "With command 'test', it computes a hub labeling and checks with "
         "100 random nodes that distances from these nodes are correct." )
               <<
+        "With command 'rank', it computes a hub labeling and outputs the"
+        "rank ordering used (most important hubs first)."
+              <<
         "Command 'closure' computes G* and outputs its arcs.\n"
         "A '-' for [graph] or [subset] stands for standard input.\n"
         " Graph format: one arc [src_id] [dst_id] [length] per line\n"
@@ -68,7 +71,7 @@ int main (int argc, char **argv) {
     // ------------------------ usage -------------------------
     std::string cmd(argc >= 2 ? argv[1] : "");
     if (argc < 3 || (cmd != "hubs" && cmd != "hubs-next-hop"
-                     && cmd != "test" && cmd != "closure")) {
+                     && cmd != "test" && cmd != "rank" && cmd != "closure")) {
         usage_exit(argv);
     }
 
@@ -200,6 +203,10 @@ int main (int argc, char **argv) {
             std::cout <<"o "<< lab[e.src] <<" "<< lab[e.wgt.next_hop]
                       <<" "<< lab[e.wgt.hub] <<" "<< e.wgt.dist <<"\n";
         }
+    } else if (cmd == "rank") {
+        for (auto v : hl.rank_order()) {
+            std::cout << lab[v] <<"\n";
+        }
     } else if (cmd == "closure") {
         // hub graphs
         std::vector<pl_lab::edgeL> edg_out = hl.out_hub_edges(is_sel, is_sel);
@@ -285,6 +292,7 @@ int main (int argc, char **argv) {
             }
         }
     } else {
+        std::cerr << "Unkwnown command: "<< cmd <<"\n\n";
         usage_exit(argv);
     }
     

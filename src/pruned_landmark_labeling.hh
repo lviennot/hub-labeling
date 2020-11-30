@@ -194,6 +194,9 @@ public:
         print_stats(std::cerr, is_sel_from, is_sel_to);
     }
 
+    // Nodes with higher rank first.
+    const std::vector<V> & rank_order() { return ranked_hubs; }
+
     V hub_ID(V i) { return ranked_hubs[i]; }
 
     inline WL distance(V u, V v) const {
