@@ -75,12 +75,12 @@ public:
         int t = trees.size();
         std::vector<V> vtx(trav.nvis());
         int tn = trav.nvis();
-        bool reach_sel = false;
+        //bool reach_sel = false;
         for (int i = 0; i < tn; ++i) {
             V v = trav.visit(i);
             vtx[i] = v ;
             n_subtree[v] = 0;
-            if (sel[v]) reach_sel = true;
+            //if (sel[v]) reach_sel = true;
         }
         //if ( ! reach_sel) { return; } // no selected node to cover!
         trees.push_back(trav.graph());

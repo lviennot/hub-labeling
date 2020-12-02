@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cstdint>
 
 #include "heap.hh"
 #include "unit.hh"
@@ -27,7 +28,7 @@ void heap_test(int n, int rnd = 1000) {
         if (i % 5 == 4) h.remove(rand() % i);
         //h.print(std::cout, get);
     }
-    int last = INT_MIN;
+    int last = std::numeric_limits<int>::min();
     while ( ! h.empty()) {
         int i = h.pop();
         std::cout /* << i */ <<" "<< key[i];
