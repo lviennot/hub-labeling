@@ -68,7 +68,7 @@ public:
 
     void set_edges(const std::vector<edge> &edg, V n = 0) {
         if (n == 0) {
-            for (auto const e : edg)
+            for (auto e : edg)
                 n = std::max(n, std::max(e.src, e.dst) + 1);
         }
         init_from_edges(n, edg);

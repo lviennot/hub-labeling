@@ -1,13 +1,14 @@
 #include <iostream>
 
 #include "heap.hh"
+#include "unit.hh"
 
 void heap_test(int n, int rnd = 1000) {
-    std::cerr <<"heap_test:";
+    std::cout <<"heap_test:";
     std::vector<int> key(n);
     for (int i = 0; i < n; ++i) { key[i] = rand() % rnd; }
     auto cmp = [&key](int i, int j) -> bool { return key[i] < key[j]; };
-    auto get = [&key](int i) -> int { return key[i]; };
+    //auto get = [&key](int i) -> int { return key[i]; };
     heap h(cmp, n);
     for (int i = 0; i < n; ++i) {
         if (i % 5 == 3) {
@@ -24,15 +25,15 @@ void heap_test(int n, int rnd = 1000) {
             h.push(j); // update
         }
         if (i % 5 == 4) h.remove(rand() % i);
-        //h.print(std::cerr, get);
+        //h.print(std::cout, get);
     }
     int last = INT_MIN;
     while ( ! h.empty()) {
         int i = h.pop();
-        std::cerr /* << i */ <<" "<< key[i];
-        assert(last <= key[i]);
+        std::cout /* << i */ <<" "<< key[i];
+        CHECK(last <= key[i]);
         last = key[i];
     }
-    std::cerr <<"\n";
+    std::cout <<"\n";
 }
 
