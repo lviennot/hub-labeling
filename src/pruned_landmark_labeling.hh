@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <iomanip>
 #include <xmmintrin.h> // prefetch
 
 #include "edge.hh"
@@ -332,6 +333,89 @@ public:
                          << "  max fwd = " << fmax
                          << "  max bwd = " << bmax
                          << "\n";
+    }
+
+    void print_stats_rank(std::ostream &cout, const V rank_threshold,
+                     const std::vector<bool> &is_sel_from = {},
+                     const std::vector<bool> &is_sel_to = {}) {
+        int64_t fwd = 0, bwd = 0;
+        V fmax = 0, bmax = 0;
+        V n_fwd = 0, n_bwd = 0;
+        bool fwd_sel = is_sel_from.size() == 0, bwd_sel = is_sel_to.size() == 0;
+        auto size_bef_threshold = [rank_threshold](const std::vector<V> &hubs){
+            for (V i = 0; ; ++i) {
+                if (hubs[i] > rank_threshold) return i;
+            }
+        };
+        for (V u = 0; u < n_; ++u) {
+            if (fwd_sel || is_sel_from[u]) {
+                V s_u_out = size_bef_threshold(index_[u].out_v);
+                if (s_u_out > fmax) { fmax = s_u_out; }
+                fwd += s_u_out;
+                ++n_fwd;
+            }
+        }
+        for (V u = 0; u < n_; ++u) {
+            if (bwd_sel || is_sel_to[u]) {
+                V s_u_in = size_bef_threshold(index_[u].in_v);
+                if (s_u_in > bmax) { bmax = s_u_in; }
+                bwd += s_u_in;
+                ++n_bwd;
+            }
+        }
+        cout << "threshold="<< rank_threshold <<" ";
+        cout << n_fwd <<" fwd "<< n_bwd  <<" bwd / "<< n_ << " labels\n";
+        if (n_ > 0) cout << "  avg fwd = " << (n_fwd == 0 ? 0 : fwd / n_fwd)
+                         << "  avg bwd = " << (n_bwd == 0 ? 0 : bwd / n_bwd)
+                         << "  max fwd = " << fmax
+                         << "  max bwd = " << bmax
+                         << "\n";
+    }
+
+    void print_full_stats_rank(std::ostream &cout,
+                     const std::vector<bool> &is_sel_from = {},
+                     const std::vector<bool> &is_sel_to = {}) {
+        std::vector<V> fwd(n_, 0), bwd(n_, 0), fmax(n_, 0), bmax(n_, 0);
+        V n_fwd = 0, n_bwd = 0;
+        bool fwd_sel = is_sel_from.size() == 0, bwd_sel = is_sel_to.size() == 0;
+        for (V u = 0; u < n_; ++u) {
+            if (fwd_sel || is_sel_from[u]) {
+                for (V iu = 0; ; ++iu) {
+                    V xu = index_[u].out_v[iu];
+                    if (xu == n_) break; // sentinel
+                    fwd[xu] += 1;
+                    if (iu + 1 > fmax[xu]) fmax[xu] = iu + 1;
+                }
+                ++n_fwd;
+            }
+        }
+        for (V u = 0; u < n_; ++u) {
+            if (bwd_sel || is_sel_to[u]) {
+                for (V iu = 0; ; ++iu) {
+                    V xu = index_[u].in_v[iu];
+                    if (xu == n_) break; // sentinel
+                    bwd[xu] += 1;
+                    if (iu + 1 > bmax[xu]) bmax[xu] = iu + 1;
+                }
+                ++n_bwd;
+            }
+        }
+        cout << "# rank stats pll n="<< n_ <<" n_fwd="<< n_fwd
+             <<" n_bwd="<< n_bwd <<"\n";
+        cout <<"# rank_thr fwd_sum fwd_avg fwd_max bwd_sum bwd_avg bwd_max\n";
+        if (n_ > 0 && n_fwd > 0 && n_bwd > 0) {
+            V fwd_sum = 0, bwd_sum = 0;
+            for (V x=0; x < n_; ++x) {
+                fwd_sum += fwd[x]; bwd_sum += bwd[x];
+                cout << x+1 << std::fixed << std::setprecision(1)
+                     <<" "<< fwd_sum
+                     <<" "<< float(fwd_sum)/n_fwd <<" "<< fmax[x]
+                     <<" "<< bwd_sum
+                     <<" "<< float(bwd_sum)/n_bwd <<" "<< bmax[x]
+                     <<"\n";
+            }
+        }
+        cout << std::flush;
     }
 
     pruned_landmark_labeling(const G &g, int  dummy,
