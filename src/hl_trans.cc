@@ -158,12 +158,13 @@ int main (int argc, char **argv) {
         CHECK(g_in.is_ID_sorted());
         g = g.reverse().reverse(); // sort neighbors by ID
         traversal<graph> trav(g.n());
-        std::vector<uint> src = {};
+        std::vector<uint> src = {}, dst = {};
         for (uint i = 0; i < 100; ++i) src.push_back(rand() % g.n());
+        for (uint i = 0; i < 100; ++i) dst.push_back(rand() % g.n());
         for (uint s : src) {
             trav.clear();
             trav.dijkstra(g, s);
-            for (int u : g) {
+            for (uint u : dst) {
                 CHECK(trav.dist(u) == hl.distance(s, u));
                 if (trav.dist(u) == INT64_MAX) continue;
                 std::pair<uint, uint> hub = hl.common_hub(s, u);
