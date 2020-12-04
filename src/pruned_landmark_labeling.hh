@@ -181,13 +181,13 @@ public:
             //progress(i_hub);
             if (hl_log.progress()) {
                 hl_log.cerr() <<"hub "<< i_hub 
-                              <<" : avg_nvis="<< (sum_nvis / (2*(i_hub+1)))
-                              <<" lst_nvis="<< (last_nvis / 2 /(i_hub - last_r))
+                              <<" : avg_nvis="<< (sum_nvis / (2*i_hub))
+                              <<" lst_nvis="<< (last_nvis / 2 /(i_hub > last_r ? i_hub - last_r : 1))
                     //<<" n=" << n_ <<" "
                               <<" avg_hs=" << (sum_nvis / (2*n_))
                               <<" (" << (sum_nvis * 12 / 1000000) <<"m)"
                               <<"\n";
-                last_r = i_hub - 1;
+                last_r = i_hub;
                 last_nvis = 0;
             }
         }

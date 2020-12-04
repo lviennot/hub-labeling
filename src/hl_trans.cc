@@ -48,6 +48,9 @@ void usage_exit (char **argv) {
               << paragraph (
         "With command 'test', it computes a hub labeling and checks with "
         "100 random nodes that distances from these nodes are correct." )
+              << paragraph (
+        "With command 'benchmark', it computes a hub labeling and"
+        "computes 1000 x 1000 distances between random nodes." )
               <<
         "With command 'rank', it computes a hub labeling and outputs the"
         "rank ordering used (most important hubs first)."
@@ -75,7 +78,7 @@ int main (int argc, char **argv) {
     // ------------------------ usage -------------------------
     std::string cmd(argc >= 2 ? argv[1] : "");
     if (argc < 3 || (cmd != "hubs" && cmd != "hubs-next-hop"
-                     && cmd != "test" && cmd != "rank"
+                     && cmd != "test" && cmd != "benchmark" && cmd != "rank"
                      && cmd != "stats_rank_threshold" && cmd != "closure")) {
         usage_exit(argv);
     }
@@ -188,6 +191,19 @@ int main (int argc, char **argv) {
                 CHECK(len == trav.dist(u));
             }
         }
+    } else if (cmd == "benchmark") {
+        std::vector<uint> src = {}, dst = {};
+        for (uint i = 0; i < 1000; ++i) src.push_back(rand() % g.n());
+        for (uint i = 0; i < 1000; ++i) dst.push_back(rand() % g.n());
+        uint dum_sum=0;
+        for (uint s : src) {
+            for (uint t : dst) {
+                dum_sum += hl.distance(s, t);
+            }
+        }
+        main_log.cerr(t) << "benchmark "<< dum_sum <<" "
+                         << src.size() <<" x "<< dst.size() <<"\n";;
+        t = main_log.lap();
     } else if (cmd == "hubs") {
         std::vector<pl_lab::edgeL> edg; 
         edg = hl.in_hub_edges(is_sel, is_sel);
