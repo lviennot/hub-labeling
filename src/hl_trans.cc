@@ -138,10 +138,14 @@ int main (int argc, char **argv) {
     t = main_log.lap();
     
     // ------------------------- hub labeling -----------------------
-    pl_lab hl(g);
+    pl_lab hl(g); // for unweighted: , {}, {}, 1, false);
     hl.print_stats(std::cerr, is_sel, is_sel);
-    main_log.cerr(t) << "hub lab\n";
+    main_log.cerr(t) << "hub lab 1\n";
     t = main_log.lap();
+    //pl_lab hl(g, 123, hl1.rank_order()); // does not help much
+    //hl.print_stats(std::cerr, is_sel, is_sel);
+    //main_log.cerr(t) << "hub lab 2\n";
+    //t = main_log.lap();
 
     // ----------------------------- output ------------------------
     if (cmd == "test") {
