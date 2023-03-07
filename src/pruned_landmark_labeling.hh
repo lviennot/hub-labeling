@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <iomanip>
-#include <xmmintrin.h> // prefetch
+//#include <xmmintrin.h> // prefetch
 
 #include "edge.hh"
 #include "traversal.hh"
