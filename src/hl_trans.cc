@@ -28,15 +28,19 @@ void usage_exit (char **argv) {
         return acc;
     };
     
-    std::cerr <<"Usage: "<< argv[0] <<" [command] [graph] [OPT [subset]]\n"
+    std::cerr <<"\nUsage: "<< argv[0] <<" [command] [graph] [OPT [subset]]\n\n"
               << paragraph (
-        "Computes a hub labeling of the graph G in file [graph] and "
-        "outputs labels of selected nodes listed in the optional "
-        "file [subset] (all nodes if no file is specified)." )
+        "Computes a hub labeling of the weighted directed graph G in file "
+        "[graph] and performs some operations based on a command (see list "
+        "below and selected nodes listed in the optional file [subset] "
+        "(all nodes if no file is specified).\n" )
               << paragraph (
         "With command 'hubs', it outputs the list "
         "of arcs from selected nodes to their out-hubs and from "
         "in-hubs to selected nodes." )
+              << paragraph (
+        "With command 'distances', it outputs the distances between selected "
+        "nodes as triples 'u v dist_uv' for all pairs 'u, v' of selected nodes." )
               << paragraph (
         "The promise is that gathering transitive arcs obtained by "
         "following one arc of the 'out-hubs' list and one arc of the "
@@ -49,20 +53,21 @@ void usage_exit (char **argv) {
         "With command 'test', it computes a hub labeling and checks with "
         "100 random nodes that distances from these nodes are correct." )
               << paragraph (
-        "With command 'benchmark', it computes a hub labeling and"
+        "With command 'benchmark', it computes a hub labeling and "
         "computes 1000 x 1000 distances between random nodes." )
-              <<
-        "With command 'rank', it computes a hub labeling and outputs the"
-        "rank ordering used (most important hubs first)."
-              <<
+              << paragraph (
+        "With command 'rank', it computes a hub labeling and outputs the "
+        "rank ordering used (most important hubs first)." )
+              << paragraph (
         "With command 'stats_rank_threshold', it computes a hub labeling "
-        "and outputs the size of labels if cut at rank [thr] for all [thr]."
-              <<
-        "Command 'closure' computes G* and outputs its arcs.\n"
+        "and outputs the size of labels if cut at rank [thr] for all [thr]." )
+              << paragraph (
+        "Command 'closure' computes G* and outputs its arcs." )
+              << "\nInputs:\n"
         "A '-' for [graph] or [subset] stands for standard input.\n"
-        " Graph format: one arc [src_id] [dst_id] [length] per line\n"
+        " Graph format: one arc [src_id] [dst_id] [arc_length] per line\n"
         " Subset format: one node [id] per line.\n"
-        " Command format: 'hubs' or 'closure'\n"
+        " Command format: 'hubs', 'closure',... (see the full list above)\n"
               <<paragraph (
          " Output format: arcs "
          "[type] [node/hub id] [OPT next/hop id] [hub/node id] [length] "
@@ -75,9 +80,30 @@ void usage_exit (char **argv) {
 int main (int argc, char **argv) {
     logging main_log("--");
 
+    // -------------------- options ----------------------
+    auto i_arg = [&argc,&argv](std::string a) {
+        //for (int i = 1; i < argc; ++i) std::cerr << argv[i] <<" "; std::cerr <<" for "<< a <<"\n";
+        for (int i = 1; i < argc; ++i)
+            if (a == argv[i])
+                return i;
+        return -1;
+    };
+    auto del_arg = [&argc,&argv,i_arg](std::string a) {
+        int i = i_arg(a);
+        if (i >= 0) {
+            for (int j = i+1; j < argc; ++j)
+                argv[j-1] = argv[j];
+            --argc;
+            return true;
+        }
+        return false;
+    };
+
+    bool symmetrize = del_arg("--symmetrize");
+
     // ------------------------ usage -------------------------
     std::string cmd(argc >= 2 ? argv[1] : "");
-    if (argc < 3 || (cmd != "hubs" && cmd != "hubs-next-hop"
+    if (argc < 3 || (cmd != "hubs" && cmd != "hubs-next-hop" && cmd != "distances"
                      && cmd != "test" && cmd != "benchmark" && cmd != "rank"
                      && cmd != "stats_rank_threshold" && cmd != "closure")) {
         usage_exit(argv);
@@ -91,6 +117,7 @@ int main (int argc, char **argv) {
     std::unordered_map<std::string,int> vi; // vertex index
     std::vector<std::string> lab;
     graph g;
+    bool weighted=false;
     size_t n = 0;
     {
         std::vector<graph::edge> edg;
@@ -98,10 +125,11 @@ int main (int argc, char **argv) {
         char u[1024], v[1024];
         long long int w;
         for ( ; fscanf(in, " %s %s %lld \n", u, v, &w) >= 3 ; ) {
-            if (vi[u] == 0) { lab.push_back(u); vi[u] = 1+n++; }
-            if (vi[v] == 0) { lab.push_back(v); vi[v] = 1+n++; }
-            edg.push_back(graph::edge(vi[u]-1, vi[v]-1, w));
-            //if(symmetrize) edg.push_back(graph::edge(vi[v]-1, vi[u]-1, w));
+            if ( ! vi.contains(u)) { lab.push_back(u); vi[u] = n++; }
+            if ( ! vi.contains(v)) { lab.push_back(v); vi[v] = n++; }
+            edg.push_back(graph::edge(vi[u], vi[v], w));
+            if(symmetrize) edg.push_back(graph::edge(vi[v], vi[u], w));
+            if (w != 1) weighted = true;
             if (main_log.progress()) {
                 main_log.cerr(t) << "read "<< edg.size() << " edges\n";
             }
@@ -113,7 +141,8 @@ int main (int argc, char **argv) {
     CHECK(n == g.n());
     size_t m = g.m();
     main_log.cerr(t)
-        << "loaded graph with n=" << n << " nodes, m=" << m <<" edges\n";
+        << "loaded graph with n=" << n << " nodes, m=" << m <<" edges " 
+        << "weighted=" << weighted << "\n";
     t = main_log.lap();
     
     // ------------------------- load subset -----------------------
@@ -122,11 +151,12 @@ int main (int argc, char **argv) {
         FILE *in = (std::string("-") != argv[3]) ? fopen(argv[3], "r") : stdin;
         char u[1024];
         for ( ; fscanf(in, " %s \n", u) >= 1 ; ) {
-            if (vi[u] != 0) {
-                uint v = vi[u] - 1;
+            if (vi.contains(u)) {
+                uint v = vi[u];
                 sel.push_back(v);
             } else {
                 std::cerr <<"  stop "<< u <<" not in the graph\n";
+                exit(2);
             }
         }
     } else {
@@ -141,7 +171,7 @@ int main (int argc, char **argv) {
     t = main_log.lap();
     
     // ------------------------- hub labeling -----------------------
-    pl_lab hl(g); // for unweighted: , {}, {}, 1, false);
+    pl_lab hl(g, {}, {}, 1, weighted);
     hl.print_stats(std::cerr, is_sel, is_sel);
     main_log.cerr(t) << "hub lab 1\n";
     t = main_log.lap();
@@ -151,10 +181,17 @@ int main (int argc, char **argv) {
     //t = main_log.lap();
 
     // ----------------------------- output ------------------------
-    if (cmd == "test") {
+    if (cmd == "distances") {
+        for (uint u : sel) {
+            for (uint v : sel) {
+                int64_t dist_uv = hl.distance(u, v);
+                std::cout << lab[u] <<" "<< lab[v] <<" "<< dist_uv <<"\n";
+            }
+        }
+    } else if (cmd == "test") {
         // hub graphs
-        std::vector<pl_lab::edgeL> edg_out = hl.out_hub_edges(is_sel, is_sel);
-        std::vector<pl_lab::edgeL> edg_in = hl.in_hub_edges(is_sel, is_sel);
+        std::vector<pl_lab::edgeL> edg_out = hl.out_hub_edges({}, {});
+        std::vector<pl_lab::edgeL> edg_in = hl.in_hub_edges({}, {});
         graphL g_out(edg_out), g_in(edg_in);
         g_in = g_in.reverse();
         CHECK(g_out.is_ID_sorted());
@@ -195,14 +232,17 @@ int main (int argc, char **argv) {
         std::vector<uint> src = {}, dst = {};
         for (uint i = 0; i < 1000; ++i) src.push_back(rand() % g.n());
         for (uint i = 0; i < 1000; ++i) dst.push_back(rand() % g.n());
+        main_log.cerr(t) << "benchmark beg: "
+                         << src.size() <<" x "<< dst.size() <<"\n";
+        t = main_log.lap();
         uint dum_sum=0;
         for (uint s : src) {
             for (uint t : dst) {
                 dum_sum += hl.distance(s, t);
             }
         }
-        main_log.cerr(t) << "benchmark "<< dum_sum <<" "
-                         << src.size() <<" x "<< dst.size() <<"\n";;
+        main_log.cerr(t) << "benchmark end: "<< dum_sum <<" "
+                         << src.size() <<" x "<< dst.size() <<"\n";
         t = main_log.lap();
     } else if (cmd == "hubs") {
         std::vector<pl_lab::edgeL> edg; 

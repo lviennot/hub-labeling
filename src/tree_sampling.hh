@@ -189,14 +189,14 @@ public:
         return count;
     }
     void remove_subtrees(V x) {
-        int nd = 0;
+        //int nd = 0;
         for (auto ti : in_trees[x]) {
             G &tre = trees[ti.first];
             std::vector<V> &vtx =  trees_vtx[ti.first];
             const std::vector<bool> &sel = *(trees_sel[ti.first]);
             int ix = ti.second;
             if (vtx[ix] == G::not_vertex) continue; // already removed from tre
-            ++nd;
+            //++nd;
             int x_subtree_size = dfs_count(tre, vtx, ix);
             int x_subtree_score = dfs_del(tre, vtx, sel, ix);
             n_all_trees -= x_subtree_size;
